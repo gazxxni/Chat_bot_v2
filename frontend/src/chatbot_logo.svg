@@ -1,0 +1,130 @@
+<svg width="400" height="400" viewBox="0 0 400 400" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="mainGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
+    </linearGradient>
+    
+    <linearGradient id="accentGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f093fb;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#f5576c;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
+    </linearGradient>
+
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="6" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <filter id="shadow">
+      <feDropShadow dx="0" dy="6" stdDeviation="12" flood-opacity="0.4"/>
+    </filter>
+  </defs>
+
+  <!-- 배경 원 -->
+  <circle cx="200" cy="200" r="190" fill="url(#mainGradient)" filter="url(#shadow)"/>
+  
+  <!-- 글래스모피즘 오버레이 -->
+  <circle cx="200" cy="200" r="190" fill="rgba(255,255,255,0.1)" />
+  
+  <!-- 장식 링 -->
+  <circle cx="200" cy="200" r="170" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="2" stroke-dasharray="8 8">
+    <animateTransform attributeName="transform" type="rotate" from="0 200 200" to="360 200 200" dur="30s" repeatCount="indefinite"/>
+  </circle>
+
+  <!-- 메인 챗봇 아이콘 그룹 -->
+  <g transform="translate(200, 200)" filter="url(#glow)">
+    
+    <!-- 말풍선 1 (왼쪽 작은 것) -->
+    <g transform="translate(-70, -40)">
+      <rect x="-25" y="-20" width="50" height="35" rx="8" fill="rgba(255,255,255,0.9)"/>
+      <path d="M -10 15 L -15 25 L -5 15 Z" fill="rgba(255,255,255,0.9)"/>
+      
+      <!-- 코드 라인 장식 -->
+      <line x1="-15" y1="-8" x2="15" y2="-8" stroke="url(#mainGradient)" stroke-width="2" stroke-linecap="round"/>
+      <line x1="-15" y1="2" x2="10" y2="2" stroke="url(#mainGradient)" stroke-width="2" stroke-linecap="round"/>
+      
+      <circle cx="18" cy="2" r="2" fill="url(#accentGradient)">
+        <animate attributeName="opacity" values="0.5;1;0.5" dur="2s" repeatCount="indefinite"/>
+      </circle>
+    </g>
+
+    <!-- 말풍선 2 (오른쪽 작은 것) -->
+    <g transform="translate(70, 30)">
+      <rect x="-25" y="-20" width="50" height="35" rx="8" fill="rgba(255,255,255,0.85)"/>
+      <path d="M 10 15 L 15 25 L 5 15 Z" fill="rgba(255,255,255,0.85)"/>
+      
+      <!-- 체크 마크 -->
+      <polyline points="-10,-5 -5,2 10,-8" stroke="url(#accentGradient)" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+
+    <!-- 메인 말풍선 (중앙 큰 것) -->
+    <g transform="translate(0, -10)">
+      <rect x="-55" y="-45" width="110" height="80" rx="15" fill="white" filter="url(#shadow)"/>
+      <path d="M -10 35 L -20 55 L 0 35 Z" fill="white"/>
+      
+      <!-- 귀여운 로봇 얼굴 -->
+      <g>
+        <!-- 눈 -->
+        <circle cx="-20" cy="-15" r="8" fill="url(#mainGradient)">
+          <animate attributeName="r" values="8;9;8" dur="3s" repeatCount="indefinite"/>
+        </circle>
+        <circle cx="20" cy="-15" r="8" fill="url(#mainGradient)">
+          <animate attributeName="r" values="8;9;8" dur="3s" repeatCount="indefinite"/>
+        </circle>
+        
+        <!-- 눈 하이라이트 -->
+        <circle cx="-18" cy="-17" r="3" fill="white" opacity="0.8"/>
+        <circle cx="22" cy="-17" r="3" fill="white" opacity="0.8"/>
+        
+        <!-- 웃는 입 -->
+        <path d="M -25 5 Q 0 20 25 5" stroke="url(#accentGradient)" stroke-width="3" fill="none" stroke-linecap="round"/>
+        
+        <!-- 안테나 -->
+        <line x1="0" y1="-45" x2="0" y2="-55" stroke="url(#mainGradient)" stroke-width="2.5" stroke-linecap="round"/>
+        <circle cx="0" cy="-58" r="5" fill="url(#accentGradient)">
+          <animate attributeName="r" values="5;7;5" dur="2s" repeatCount="indefinite"/>
+        </circle>
+      </g>
+      
+
+    </g>
+
+  </g>
+
+  <!-- 떠다니는 파티클 (AI 지능 상징) -->
+  <g opacity="0.6">
+    <circle cx="100" cy="100" r="3" fill="#f5576c">
+      <animate attributeName="cy" values="100;90;100" dur="3s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.3;0.8;0.3" dur="3s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="300" cy="130" r="4" fill="#667eea">
+      <animate attributeName="cy" values="130;120;130" dur="2.5s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.4;0.9;0.4" dur="2.5s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="90" cy="270" r="3" fill="#f093fb">
+      <animate attributeName="cy" values="270;260;270" dur="3.5s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.3;0.7;0.3" dur="3.5s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="310" cy="280" r="3" fill="#764ba2">
+      <animate attributeName="cy" values="280;270;280" dur="2.8s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.5;1;0.5" dur="2.8s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+
+  <!-- 별 효과 (지능/도움 상징) -->
+  <g opacity="0.5">
+    <path d="M 150 80 L 152 85 L 157 85 L 153 88 L 155 93 L 150 90 L 145 93 L 147 88 L 143 85 L 148 85 Z" fill="white">
+      <animate attributeName="opacity" values="0.3;1;0.3" dur="2s" repeatCount="indefinite"/>
+    </path>
+    <path d="M 260 90 L 262 95 L 267 95 L 263 98 L 265 103 L 260 100 L 255 103 L 257 98 L 253 95 L 258 95 Z" fill="white">
+      <animate attributeName="opacity" values="0.4;1;0.4" dur="2.3s" repeatCount="indefinite"/>
+    </path>
+  </g>
+
+  <!-- 글로우 하이라이트 -->
+  <ellipse cx="150" cy="140" rx="50" ry="35" fill="rgba(255,255,255,0.1)" transform="rotate(-35 150 140)"/>
+</svg>
