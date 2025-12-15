@@ -31,3 +31,6 @@
 #### 3. Performance & Reliability
 - **Latency 개선:** 논문 단계의 `Gemini 1.5 Pro` 대신, 최신 경량화 모델인 `Gemini 2.5 Flash`를 도입하여 답변 생성 속도를 개선했습니다.
 - **Guardrails:** 시스템 프롬프트에 "참고 정보에 없는 과목은 절대 언급하지 말 것" 등의 제약 조건을 명시하여 답변의 신뢰성을 확보했습니다.
+
+---
+[![GitHub](https://img.shields.io/badge/GitHub-View_Repository-181717?style=for-the-badge&logo=github)](https://github.com/gazxxni/Chat_bot)
