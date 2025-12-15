@@ -15,8 +15,6 @@
 | **Query** | **Raw Query**<br>(사용자 질문 그대로 검색) | **Query Expansion**<br>(LLM을 활용한 검색어 확장) | "인공지능" 검색 시 "머신러닝, 딥러닝"까지 포괄하여 Recall(재현율) 상승 |
 | **Model** | **Gemini 1.5 Pro** | **Gemini 2.5 Flash** | 응답 지연(Latency) 최소화 및 운영 비용 효율화 |
 
----
-
 ## 3. Detailed Technical Implementations
 
 #### 1. Retrieval: 하이브리드 검색 (Hybrid Search)
