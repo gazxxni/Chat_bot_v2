@@ -2,11 +2,11 @@
 
 컴퓨터공학과 신입생 및 재학생의 성공적인 수강 계획을 돕기 위해 설계된 RAG(검색 증강 생성) 기반 챗봇 프로젝트입니다.
 
-## Key Improvements: From Research to Advanced RAG
+## 1. Key Improvements: From Research to Advanced RAG
 
 본 프로젝트는 기존 챗봇 프로젝트를 바탕으로, **실제 서비스 레벨의 검색 정확도와 응답 속도를 확보하기 위해 아키텍처를 대폭 고도화**하였습니다. 단순한 벡터 검색을 넘어 **Hybrid Search, Re-ranking, Semantic Chunking** 등 Advanced RAG 기술을 적용했습니다.
 
-### Technical Evolution: Basic vs. Production Code
+## 2. Technical Evolution: Basic vs. Production Code
 
 | 구분 | 기존 챗봇 (Baseline) | 실제 구현 코드 (Advanced RAG) | 개선 효과 |
 | :--- | :--- | :--- | :--- |
@@ -17,7 +17,7 @@
 
 ---
 
-### Detailed Technical Implementations
+## 3. Detailed Technical Implementations
 
 #### 1. Retrieval: 하이브리드 검색 (Hybrid Search)
 - **구현:** `rank_bm25` (Keyword Search)와 `ChromaDB` (Vector Search)를 결합했습니다.
