@@ -12,6 +12,7 @@ from rank_bm25 import BM25Okapi
 from sentence_transformers import CrossEncoder
 import google.generativeai as genai
 import re
+import math
 
 load_dotenv()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
@@ -72,6 +73,9 @@ app.add_middleware(
 
 class QueryRequest(BaseModel):
     query: str
+    
+def sigmoid(x):
+    return 1 / (1 + math.exp(-x))
 
 # ─── Query Expansion (Gemini) ───────────────────────────
 def expand_query(query: str) -> str:
@@ -158,13 +162,15 @@ def rerank_documents(query: str, documents: list, top_k: int = 10):
     pairs = [[query, doc] for doc in documents]
     scores = reranker.predict(pairs)
     
-    scored = sorted(zip(documents, scores), key=lambda x: x[1], reverse=True)
+    probs = [sigmoid(s) for s in scores]
     
-    print(f"[DEBUG] Re-ranking 상위 3개:")
-    for i, (doc, sc) in enumerate(scored[:3]):
-        print(f"  #{i+1} (score={sc:.2f}): {doc[:50]}...")
+    scored = sorted(zip(documents, probs, scores), key=lambda x: x[1], reverse=True)
     
-    return [doc for doc, _ in scored[:top_k]]
+    print(f"[DEBUG] Re-ranking 상위 3개 (확률 / 로짓):")
+    for i, (doc, prob, logit) in enumerate(scored[:3]):
+        print(f"  #{i+1}: {prob:.4f} (logit={logit:.2f}) - {doc[:30]}...")
+    
+    return [(doc, prob) for doc, prob, _ in scored[:top_k]]
 
 # ─── /ask 엔드포인트 ───────────────────────────────────
 @app.post("/ask")
@@ -178,21 +184,33 @@ async def ask_question(request: QueryRequest):
     # Step 2: Hybrid Search (확장된 쿼리로 검색)
     hybrid_res = hybrid_search(expanded_query, top_k=30)
     
-    if not hybrid_res or hybrid_res[0][1]["score"] < 0.3:  # 정규화된 점수 기준
+    # Hybrid 단계에서는 너무 엄격하게 자르지 않음 (혹시 모르니)
+    if not hybrid_res: 
         return {"answer": "관련 정보를 찾을 수 없습니다."}
 
     candidates = [r[1]["document"] for r in hybrid_res]
-    
-    if not candidates:
-        return {"answer": "관련 정보를 찾을 수 없습니다."}
-    
     print(f"[INFO] Hybrid Search 결과: {len(candidates)}개")
-    
+       
     # Step 3: Re-ranking (원래 질문 기준)
-    reranked = rerank_documents(original_query, candidates, top_k=12)
+    reranked_with_scores = rerank_documents(original_query, candidates, top_k=12)
     
+    if not reranked_with_scores:
+        return {"answer": "관련 정보를 찾을 수 없습니다."}
+
+    top_doc, top_prob = reranked_with_scores[0]
+    print(f"[DEBUG] 가장 높은 관련도 점수: {top_prob:.4f}")
+
+    if top_prob < 0.05:
+        print("[INFO] 관련성 낮음(0.3 미만) -> 답변 거부")
+        return {"answer": "질문하신 내용과 관련된 학과 정보를 찾을 수 없습니다."}
+    
+    valid_docs = [doc for doc, prob in reranked_with_scores]
+    
+    if not valid_docs:
+         return {"answer": "관련 정보를 찾을 수 없습니다."}
+     
     # Step 4: 컨텍스트 구성
-    context = "\n\n---\n\n".join(list(dict.fromkeys(reranked)))[:4500]
+    context = "\n\n---\n\n".join(list(dict.fromkeys(valid_docs)))[:10000]
     print(f"[INFO] 컨텍스트: {len(context)}자")
     
     # Step 5: Gemini로 응답 생성
@@ -230,7 +248,7 @@ async def ask_question(request: QueryRequest):
                 "original_query": original_query,
                 "expanded_query": expanded_query,
                 "candidates_count": len(candidates),
-                "reranked_count": len(reranked)
+                "reranked_count": len(reranked_with_scores)
             }
         }
     except Exception as e:
