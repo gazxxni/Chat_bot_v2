@@ -177,6 +177,10 @@ async def ask_question(request: QueryRequest):
     
     # Step 2: Hybrid Search (확장된 쿼리로 검색)
     hybrid_res = hybrid_search(expanded_query, top_k=30)
+    
+    if not hybrid_res or hybrid_res[0][1]["score"] < 0.3:  # 정규화된 점수 기준
+        return {"answer": "관련 정보를 찾을 수 없습니다."}
+
     candidates = [r[1]["document"] for r in hybrid_res]
     
     if not candidates:
