@@ -1,5 +1,5 @@
-# main_hybrid_rerank.py - Query Expansion + Hybrid Search + Re-ranking (OpenAI API)
-# 필요 설치: pip install rank-bm25 sentence-transformers openai
+# main_hybrid_rerank.py - Query Expansion + Hybrid Search + Re-ranking (Gemini API)
+# 필요 설치: pip install rank-bm25 sentence-transformers google-generativeai
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -10,16 +10,18 @@ import os
 from dotenv import load_dotenv
 from rank_bm25 import BM25Okapi
 from sentence_transformers import CrossEncoder
-from openai import OpenAI
+import google.generativeai as genai
 import re
 import math
 
 load_dotenv()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
-# ─── OpenAI 클라이언트 설정 ────────────────────────────────────
-client = OpenAI(api_key=OPENAI_API_KEY)
-print("[INFO] OpenAI API 설정 완료 (gpt-4o-mini)")
+# ─── Gemini 클라이언트 설정 ────────────────────────────────────
+genai.configure(api_key=GEMINI_API_KEY)
+gemini_model = genai.GenerativeModel('gemini-2.5-flash')
+print("[INFO] Gemini API 설정 완료 (gemini-2.5-flash)")
 
 # ─── Re-ranker 모델 로드 ─────────────────────────────────
 print("[INFO] Cross-Encoder 모델 로딩 중...")
@@ -78,36 +80,33 @@ def sigmoid(x):
 # ─── 설정 ──────────────────────────────────
 ENABLE_QUERY_EXPANSION = True  # Query Expansion 활성화 (Q22 해결)
 
-# ─── Query Expansion (OpenAI) ───────────────────────────
+# ─── Query Expansion (Gemini) ───────────────────────────
 def expand_query(query: str) -> str:
     """
     사용자 질문을 확장하여 관련 키워드 추가
     예: "인공지능 관련 과목" → "인공지능 머신러닝 딥러닝 알고리즘 자료구조 파이썬 선형대수"
     """
-    system_prompt = """당신은 컴퓨터공학과 교육과정 검색을 돕는 전문가입니다.
-    학생의 질문에서 검색어를 확장할 때:
+    prompt = f"""
+    당신은 컴퓨터공학과 교육과정 검색을 돕는 전문가입니다.
+
+    학생의 질문: "{query}"
+
+    이 질문으로 교육과정 문서를 검색할 때, 관련된 과목이나 키워드를 최대한 많이 찾을 수 있도록 검색어를 확장해주세요.
+
+    규칙:
     1. 원래 질문의 핵심 키워드는 반드시 포함
     2. 해당 분야의 기초/선수 과목 키워드 추가 (예: 인공지능 → 알고리즘, 자료구조, 선형대수, 확률통계)
     3. 관련 심화 과목 키워드 추가 (예: 인공지능 → 머신러닝, 딥러닝, 텍스트마이닝)
     4. 관련 프로그래밍 언어 추가 (예: 파이썬, C언어)
     5. 띄어쓰기로 구분된 키워드만 출력 (문장 형태 X)
     6. 최대 15개 키워드
+
+    확장된 검색어만 출력하세요:
     """
 
-    user_prompt = f"""질문: "{query}"
-
-위 질문으로 교육과정 문서를 검색할 때, 관련된 과목이나 키워드를 최대한 많이 찾을 수 있도록 검색어를 확장해주세요.
-확장된 검색어만 출력하세요:"""
-
     try:
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
-            ]
-        )
-        expanded = response.choices[0].message.content.strip()
+        response = gemini_model.generate_content(prompt)
+        expanded = response.text.strip()
         print(f"[DEBUG] Query Expansion: '{query}' → '{expanded}'")
         return expanded
     except Exception as e:
@@ -221,63 +220,34 @@ async def ask_question(request: QueryRequest):
     context = "\n\n---\n\n".join(list(dict.fromkeys(valid_docs)))[:5500]
     print(f"[INFO] 컨텍스트: {len(context)}자")
 
-    # Step 5: OpenAI로 응답 생성
-    system_prompt = """당신은 컴퓨터공학과 신입생의 과목 선택을 도와주는 조교 챗봇입니다.
-상담 선생님처럼 부드럽고 친근하게 설명해주세요.
+    # Step 5: Gemini로 응답 생성
+    final_prompt = f"""
+    당신은 컴퓨터공학과 신입생의 과목 선택을 도와주는 조교 챗봇입니다.
+    상담 선생님처럼 부드럽고 친근하게 설명해주세요.
 
-[필수 규칙 - 반드시 준수하세요. 위반하면 안됨]
-1. **절대 규칙: 참고 정보에만 있는 내용**을 사용하세요.
-   - 참고 정보에 없는 과목/정보는 절대 절대 만들지 마세요.
-   - 없는 학점을 말하지 마세요 (예: "123학점" 같은 거짓)
-   - 없는 학기를 말하지 마세요 (예: "5학년" 같은 거짓)
-2. **절대 규칙: 관련된 모든 항목을 포함**하세요.
-   - 누락된 것이 없는지 참고 정보를 처음부터 끝까지 다시 꼼꼼히 확인하세요.
-   - 절반만 답변하면 안됩니다.
-3. **기초 → 중급 → 심화** 순서로 정렬하세요.
-4. 각 항목은 "이름/내용 (학년-학기): 설명" 형식으로 작성하세요.
-5. 정보가 없으면 "질문하신 내용과 관련된 정보를 찾을 수 없습니다"라고 명확히 말하세요.
+    [필수 규칙]
+    1. 참고 정보에 있는 과목 중 질문과 관련된 과목은 모두 추천하세요.
+    2. 관련 과목이 많으면 많이, 적으면 적게 추천하세요. 개수 제한 없음.
+    3. 기초 과목 → 핵심 과목 → 심화 과목 순서로 추천하세요.
+    4. 각 과목은 "과목명 (학년-학기): 한 줄 설명" 형식으로 작성하세요.
+    5. 참고 정보에 없는 과목은 절대 언급하지 마세요.
 
-[금지 사항 - 이것을 위반하면 안됨]
-- 마크다운 기호(*,**,-,•,#) 절대 절대 금지
-- 번호는 "1. 2. 3." 형식만 허용
-- 참고 정보에 없는 사실/숫자를 절대 만들지 마세요
-- 거짓 정보 생성 금지 (이 규칙이 가장 중요함)
+    [금지 사항]
+    - *, **, -, •, # 같은 마크다운 기호 사용 금지
+    - 번호는 "1. 2. 3." 형식만 사용
 
-[검증 체크리스트 - 답변 전에 확인]
-- 모든 항목을 참고 정보와 하나하나 대조했나요?
-- 누락된 관련 항목이 정말 없나요? (중요!)
-- 거짓 정보(만든 정보)가 정말 없나요? (매우 중요!)
-- 참고 정보의 모든 항목을 다 포함했나요?"""
+    [참고 정보]
+    {context}
 
-    user_prompt = f"""[참고 정보]
-{context}
+    [학생의 질문]
+    {original_query}
 
-[학생의 질문]
-{original_query}
-
-========================================
-[매우 중요한 주의사항]
-========================================
-1. **반드시** 위의 "참고 정보"에 있는 내용만 사용하세요.
-2. **절대** 참고 정보에 없는 과목, 학점, 학기를 만들지 마세요.
-3. **관련된 모든 항목**을 빠짐없이 포함하세요 (절반만 답변하면 안됨).
-4. 거짓 정보를 생성하면 안됩니다 (예: 없는 학점을 말하기).
-5. 답변하기 전에 참고 정보의 모든 항목을 확인하세요.
-
-[특히 주의: 다음을 확인하세요]
-- 참고 정보의 모든 과목을 다 언급했나요?
-- 만든 정보(거짓)가 없나요?
-- 참고 정보에 없는 내용을 말하지 않았나요?"""
+    위 참고 정보에서 질문과 관련된 모든 과목을 찾아 추천해주세요.
+    """
 
     try:
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
-            ]
-        )
-        answer = response.choices[0].message.content
+        response = gemini_model.generate_content(final_prompt)
+        answer = response.text
 
         return {
             "answer": answer,
@@ -289,7 +259,7 @@ async def ask_question(request: QueryRequest):
             }
         }
     except Exception as e:
-        print(f"[ERROR] OpenAI 응답 생성 실패: {e}")
+        print(f"[ERROR] Gemini 응답 생성 실패: {e}")
         return {"answer": f"오류: {e}"}
 
 # ─── 디버깅 엔드포인트 ────────────────────────────────
@@ -337,7 +307,7 @@ async def test_full_pipeline(request: QueryRequest):
 @app.get("/")
 def root():
     return {
-        "message": "컴공도우미봇 (Query Expansion + Hybrid + Re-ranking + OpenAI)",
+        "message": "컴공도우미봇 (Query Expansion + Hybrid + Re-ranking + Gemini)",
         "docs": len(ALL_DOCUMENTS),
-        "model": "gpt-4o-mini"
+        "model": "gemini-2.5-flash"
     }
