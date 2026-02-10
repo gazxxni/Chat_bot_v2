@@ -1,1 +1,13 @@
 .env
+
+eval_rag_accuracy.py
+eval_rag_detail.json
+eval_rag_detail_1.json
+eval_rag_detail_2.json
+eval_rag_detail_3.json
+eval_rag_detail_4.json
+eval_rag_detail_5.json
+eval_rag_detail_6.json
+main_hybrid_rerank_before.py
+rag_test_set_30.json
+EVAL_README.md
