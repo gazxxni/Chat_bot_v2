@@ -113,47 +113,45 @@ def expand_query(query: str) -> str:
         print(f"[ERROR] Query Expansion 실패: {e}")
         return query
 
-# ─── Hybrid Search ──────────────────────────────────────
-def hybrid_search(query: str, top_k: int = 70):
-    """BM25 85% + Vector 15% (정확 매칭 극대화)"""
+# ─── Hybrid Search (Weighted RRF) ──────────────────────────────────────
+def hybrid_search(query: str, top_k: int = 70, k: int = 60):
+    """Weighted RRF: BM25 85% + Vector 15%"""
     results = {}
     bm25_weight = 0.85
     vector_weight = 0.15
-    
-    # BM25
+
+    # BM25 순위 산출
     if BM25_INDEX:
         tokens = tokenize_korean(query)
         scores = BM25_INDEX.get_scores(tokens)
-        for idx, score in enumerate(scores):
-            if score > 0:
-                results[ALL_IDS[idx]] = {
-                    "document": ALL_DOCUMENTS[idx],
-                    "bm25": score,
-                    "vector": 0.0
-                }
-        print(f"[DEBUG] BM25 매칭: {sum(1 for s in scores if s > 0)}개")
-    
-    # Vector
+        ranked = sorted(
+            [(idx, score) for idx, score in enumerate(scores) if score > 0],
+            key=lambda x: x[1], reverse=True
+        )
+        print(f"[DEBUG] BM25 매칭: {len(ranked)}개")
+        for rank, (idx, _) in enumerate(ranked):
+            results[ALL_IDS[idx]] = {
+                "document": ALL_DOCUMENTS[idx],
+                "score": bm25_weight * (1 / (k + rank + 1))
+            }
+
+    # Vector 순위 산출
     try:
         vr = collection_semantic.query(query_texts=[query], n_results=top_k, include=["documents", "distances"])
         if vr.get("ids") and vr["ids"][0]:
             print(f"[DEBUG] Vector 매칭: {len(vr['ids'][0])}개")
-            for i, doc_id in enumerate(vr["ids"][0]):
-                sim = 1 - vr["distances"][0][i]
+            for rank, doc_id in enumerate(vr["ids"][0]):
+                rrf_score = vector_weight * (1 / (k + rank + 1))
                 if doc_id in results:
-                    results[doc_id]["vector"] = sim
+                    results[doc_id]["score"] += rrf_score
                 else:
-                    results[doc_id] = {"document": vr["documents"][0][i], "bm25": 0.0, "vector": sim}
+                    results[doc_id] = {
+                        "document": vr["documents"][0][rank],
+                        "score": rrf_score
+                    }
     except Exception as e:
         print(f"[ERROR] Vector Search: {e}")
-    
-    # 점수 결합
-    if results:
-        max_bm25 = max(r["bm25"] for r in results.values()) or 1
-        max_vec = max(r["vector"] for r in results.values()) or 1
-        for r in results.values():
-            r["score"] = (bm25_weight * r["bm25"] / max_bm25) + (vector_weight * r["vector"] / max_vec)
-    
+
     sorted_res = sorted(results.items(), key=lambda x: x[1]["score"], reverse=True)
     return sorted_res[:top_k]
 

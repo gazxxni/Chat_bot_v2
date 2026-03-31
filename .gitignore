@@ -1,4 +1,6 @@
 .env
+.claude/
+CLAUDE.md
 
 eval_rag_accuracy.py
 eval_rag_detail.json
